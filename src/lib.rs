@@ -6,7 +6,7 @@ use std::{
 
 /// A markdown warning
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Warning {
     /// Depending on markdown flavor may be a heading, may not
     ///
@@ -23,7 +23,7 @@ pub enum Warning {
 ///
 /// First documented is preferred
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub enum Md<'a> {
     /// Markdown warning
     // FIXME: Maybe not here
@@ -131,7 +131,7 @@ pub enum Md<'a> {
     /// !!! warning "My warning text"
     ///
     ///     Some more information about the warning
-    /// ``` 
+    /// ```
     ///
     /// Can be
     ///
@@ -142,7 +142,7 @@ pub enum Md<'a> {
     ///  - `IMPORTANT`
     ///
     /// Or with `!!!` syntax
-    /// 
+    ///
     ///  - `note`
     ///  - `astract`
     ///  - `info`
@@ -251,10 +251,56 @@ pub enum Md<'a> {
 }
 
 /// Markdown reader
-pub struct Reader<'a>(Box<dyn Iterator<Item = Result<Cow<'a, [u8]>>> + 'a>);
+pub struct Reader<'a> {
+    line_reader: LineReader<'a>,
+    paragraph_starting: bool,
+    queued_stack: Vec<Md<'a>>,
+}
 
 impl<'a> Iterator for Reader<'a> {
     type Item = Result<Md<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(queued) = self.queued_stack.pop() {
+            return Some(Ok(queued));
+        };
+
+        let line = loop {
+            let line = self.line_reader.next()?;
+            let line = match line {
+                Ok(text) => text,
+                Err(e) => return Some(Err(e)),
+            };
+
+            if line.is_empty() {
+                self.paragraph_starting = true;
+                continue;
+            }
+
+            break line;
+        };
+
+        self.queued_stack.push(Md::Text(line));
+
+        self.paragraph_starting = false;
+        Some(Ok(Md::Paragraph))
+    }
+}
+
+impl<'a> From<LineReader<'a>> for Reader<'a> {
+    fn from(line_reader: LineReader<'a>) -> Self {
+        Self {
+            line_reader,
+            paragraph_starting: false,
+            queued_stack: Vec::new(),
+        }
+    }
+}
+
+struct LineReader<'a>(Box<dyn Iterator<Item = Result<Cow<'a, [u8]>>> + 'a>);
+
+impl<'a> Iterator for LineReader<'a> {
+    type Item = Result<Cow<'a, str>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let text = match self.0.next()? {
@@ -276,7 +322,7 @@ impl<'a> Iterator for Reader<'a> {
             },
         };
 
-        Some(Ok(Md::Text(text)))
+        Some(Ok(text))
     }
 }
 
@@ -287,14 +333,16 @@ pub fn from_str<'a>(md: &'a str) -> Reader<'a> {
 
 /// Create markdown reader from byte slice
 pub fn from_slice<'a>(md: &'a [u8]) -> Reader<'a> {
-    Reader(Box::new(
+    Reader::from(LineReader(Box::new(
         md.split(|x| *x == b'\n').map(Cow::<'a, [u8]>::from).map(Ok),
-    ))
+    )))
 }
 
 /// Create markdown reader from I/O reader
 pub fn from_reader<'a>(md: impl Read + 'a) -> Reader<'a> {
-    Reader(Box::new(BufReader::new(md).lines().map(|l| {
-        l.map(|x| Cow::<'static, [u8]>::from(x.into_bytes()))
-    })))
+    Reader::from(LineReader(Box::new(
+        BufReader::new(md)
+            .lines()
+            .map(|l| l.map(|x| Cow::<'static, [u8]>::from(x.into_bytes()))),
+    )))
 }
