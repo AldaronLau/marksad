@@ -1,6 +1,15 @@
-use std::{io::Read, str};
+use std::{borrow::Cow, io::Read, str};
 
 use crate::{decode::Result, line_reader::LineReader, Md};
+
+const HEADING1: &str = "#";
+const HEADING2: &str = "##";
+const HEADING3: &str = "###";
+const HEADING4: &str = "####";
+const HEADING5: &str = "#####";
+const HEADING6: &str = "######";
+// This one is invalid, should warn and output a paragraph
+const HEADING7: &str = "#######";
 
 /// Markdown decoder
 pub struct Decoder<'a> {
@@ -34,7 +43,7 @@ impl<'a> Iterator for Decoder<'a> {
             return Some(Ok(queued));
         };
 
-        let line = loop {
+        let mut line = loop {
             let line = self.line_reader.next()?;
             let line = match line {
                 Ok(text) => text,
@@ -48,6 +57,46 @@ impl<'a> Iterator for Decoder<'a> {
 
             break line;
         };
+
+        'headings: {
+            if line.starts_with(HEADING7) {
+                break 'headings;
+            }
+
+            // Check for headings
+            for (heading_prefix, heading_md) in [
+                (HEADING6, Md::Heading6),
+                (HEADING5, Md::Heading5),
+                (HEADING4, Md::Heading4),
+                (HEADING3, Md::Heading3),
+                (HEADING2, Md::Heading2),
+                (HEADING1, Md::Heading1),
+            ] {
+                line = match line {
+                    Cow::Borrowed(line) => {
+                        if let Some(line) = line.strip_prefix(heading_prefix) {
+                            self.queued_stack
+                                .push(Md::Text(line.trim_start().into()));
+                            return Some(Ok(heading_md));
+                        }
+
+                        Cow::Borrowed(line)
+                    }
+                    Cow::Owned(mut line) => {
+                        if line.strip_prefix(heading_prefix).is_some() {
+                            let slice = &line[heading_prefix.len()..];
+                            let ws = slice.len() - slice.trim_start().len();
+
+                            line.drain(0..heading_prefix.len() + ws);
+                            self.queued_stack.push(Md::Text(line.into()));
+                            return Some(Ok(heading_md));
+                        }
+
+                        Cow::Owned(line)
+                    }
+                };
+            }
+        }
 
         self.queued_stack.push(Md::Text(line));
 
