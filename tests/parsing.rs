@@ -67,3 +67,26 @@ fn headings() {
         });
     }
 }
+
+#[test]
+fn multiline_paragraphs() {
+    test_reader_string("tests/data/MULTILINE_PARAGRAPHS.md", |mds| {
+        let expected = [
+            Md::Paragraph,
+            Md::Text("This is a multi-line".into()),
+            Md::Text("paragraph.".into()),
+            Md::Text("Good talk.".into()),
+            Md::Paragraph,
+            Md::Text("New paragraph, single line".into()),
+            Md::Paragraph,
+            Md::Text("Another".into()),
+            Md::Text("multi-line".into()),
+            Md::Text("paragraph".into()),
+            Md::Paragraph,
+            Md::Text("And".into()),
+            Md::Text("another.".into()),
+        ];
+
+        assert_eq!(mds, expected);
+    });
+}

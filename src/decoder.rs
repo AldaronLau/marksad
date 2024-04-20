@@ -77,6 +77,7 @@ impl<'a> Iterator for Decoder<'a> {
                         if let Some(line) = line.strip_prefix(heading_prefix) {
                             self.queued_stack
                                 .push(Md::Text(line.trim_start().into()));
+                            self.paragraph_starting = true;
                             return Some(Ok(heading_md));
                         }
 
@@ -89,6 +90,7 @@ impl<'a> Iterator for Decoder<'a> {
 
                             line.drain(0..heading_prefix.len() + ws);
                             self.queued_stack.push(Md::Text(line.into()));
+                            self.paragraph_starting = true;
                             return Some(Ok(heading_md));
                         }
 
@@ -98,10 +100,14 @@ impl<'a> Iterator for Decoder<'a> {
             }
         }
 
-        self.queued_stack.push(Md::Text(line));
+        if self.paragraph_starting {
+            self.queued_stack.push(Md::Text(line));
 
-        self.paragraph_starting = false;
-        Some(Ok(Md::Paragraph))
+            self.paragraph_starting = false;
+            Some(Ok(Md::Paragraph))
+        } else {
+            Some(Ok(Md::Text(line)))
+        }
     }
 }
 
@@ -109,7 +115,7 @@ impl<'a> From<LineReader<'a>> for Decoder<'a> {
     fn from(line_reader: LineReader<'a>) -> Self {
         Self {
             line_reader,
-            paragraph_starting: false,
+            paragraph_starting: true,
             queued_stack: Vec::new(),
         }
     }
