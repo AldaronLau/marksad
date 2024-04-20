@@ -16,8 +16,8 @@ Licensed under any of
  - Apache License, Version 2.0, ([LICENSE\_APACHE] or
    <https://www.apache.org/licenses/LICENSE-2.0>)
  - Boost Software License, Version 1.0, ([LICENSE\_BOOST] or
-   <https://www.boost.org/LICENSE_1_0.txt>) - MIT License, ([LICENSE\_MIT] or
-   <https://mit-license.org/>)
+   <https://www.boost.org/LICENSE_1_0.txt>)
+ - MIT License, ([LICENSE\_MIT] or <https://mit-license.org/>)
 
 at your option.
 
