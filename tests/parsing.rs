@@ -1,12 +1,12 @@
-use std::{fs::File, io::Result};
+use std::fs::File;
 
-use marksad::Md;
+use marksad::{Md, Result};
 
 #[test]
 fn paragraphs() {
     let file = File::open("tests/PARAGRAPHS.md").unwrap();
     let mds = marksad::from_reader(file)
-        .collect::<Result<Vec<_>>>()
+        .collect::<Result<'_, Vec<_>>>()
         .unwrap();
     let expected = [
         Md::Paragraph,
