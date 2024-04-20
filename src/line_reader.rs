@@ -4,7 +4,7 @@ use std::{
     str,
 };
 
-use crate::{Error, Result};
+use crate::decode::{Error, Result};
 
 pub(crate) struct LineReader<'a>(
     Box<dyn Iterator<Item = Result<'a, Cow<'a, [u8]>>> + 'a>,

@@ -1,12 +1,29 @@
 use std::{io::Read, str};
 
-use crate::{line_reader::LineReader, Md, Result};
+use crate::{decode::Result, line_reader::LineReader, Md};
 
-/// Markdown reader
+/// Markdown decoder
 pub struct Decoder<'a> {
     line_reader: LineReader<'a>,
     paragraph_starting: bool,
     queued_stack: Vec<Md<'a>>,
+}
+
+impl<'a> Decoder<'a> {
+    /// Create markdown decoder from I/O reader
+    pub fn from_reader(md: impl Read + 'a) -> Self {
+        Self::from(LineReader::from_reader(md))
+    }
+
+    /// Create markdown decoder from string slice
+    pub fn from_str(md: &'a str) -> Self {
+        Self::from_slice(md.as_bytes())
+    }
+
+    /// Create markdown decoder from byte slice
+    pub fn from_slice(md: &'a [u8]) -> Self {
+        Self::from(LineReader::from_slice(md))
+    }
 }
 
 impl<'a> Iterator for Decoder<'a> {
@@ -47,19 +64,4 @@ impl<'a> From<LineReader<'a>> for Decoder<'a> {
             queued_stack: Vec::new(),
         }
     }
-}
-
-/// Create markdown reader from string slice
-pub fn from_str(md: &str) -> Decoder<'_> {
-    from_slice(md.as_bytes())
-}
-
-/// Create markdown reader from byte slice
-pub fn from_slice(md: &[u8]) -> Decoder<'_> {
-    Decoder::from(LineReader::from_slice(md))
-}
-
-/// Create markdown reader from I/O reader
-pub fn from_reader<'a>(md: impl Read + 'a) -> Decoder<'a> {
-    Decoder::from(LineReader::from_reader(md))
 }

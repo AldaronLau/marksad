@@ -1,4 +1,4 @@
-/// A markdown warning
+/// Markdown decoding warning kind
 #[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum WarningKind {
@@ -13,7 +13,7 @@ pub enum WarningKind {
     AmbiguousHeading,
 }
 
-/// Markdown warning
+/// Markdown decoding warning
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Warning<'a> {
     line_text: &'a str,
