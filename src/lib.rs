@@ -84,11 +84,114 @@ pub enum Md<'a> {
     Strikethrough(bool),
     /// Highlight style text `==`
     Highlight(bool),
-    /// Underline `<ins></ins>`
+    /// Underline `--`, `<ins></ins>`, `<u></u>`
     Underline(bool),
-    /// `> ⚠️ My warning text`, `> :warning: My warning text`,
-    /// `!!! warning My warning text`
+    /// Same line warning text:
+    ///
+    /// ```md
+    /// > [!WARNING]
+    /// > My warning text
+    /// >
+    /// > Some more information about the warning
+    /// ```
+    ///
+    /// ```md
+    /// > [!WARNING]
+    /// > My warning text
+    /// ```
+    ///
+    /// Separate line more information:
+    ///
+    /// ```md
+    /// > [!WARNING]
+    /// >
+    /// > Some more information about the warning
+    /// ```
+    ///
+    /// Can also use double space:
+    ///
+    /// ```md
+    /// > [!WARNING]  
+    /// > Some more information about the warning
+    /// ```
+    ///
+    /// This also works (but not recommended)
+    ///
+    /// ```md
+    /// > [!WARNING]
+    /// My warning text
+    ///
+    /// > [!WARNING]  
+    /// Some more information about the warning
+    /// ```
+    ///
+    /// Alternative syntax:
+    ///
+    /// ```md
+    /// !!! warning "My warning text"
+    ///
+    ///     Some more information about the warning
+    /// ``` 
+    ///
+    /// Can be
+    ///
+    ///  - `NOTE`
+    ///  - `TIP`
+    ///  - `WARNING`
+    ///  - `CAUTION`
+    ///  - `IMPORTANT`
+    ///
+    /// Or with `!!!` syntax
+    /// 
+    ///  - `note`
+    ///  - `astract`
+    ///  - `info`
+    ///  - `tip`
+    ///  - `success`
+    ///  - `question`
+    ///  - `warning`
+    ///  - `failure`
+    ///  - `danger`
+    ///  - `bug`
+    ///  - `example`
+    ///  - `quote`
     Admonition(Cow<'a, str>),
+    /// Unexpanded:
+    ///
+    /// ```md
+    /// ++  My summary
+    ///     Continued summary
+    ///
+    ///     Details that can be expanded
+    /// ```
+    ///
+    /// Expanded:
+    ///
+    /// ```md
+    /// +++ My summary
+    ///     Continued summary
+    ///
+    ///     Details that can be collapsed
+    /// ```
+    ///
+    /// `<details><summary>My summary</summary></details>`
+    ///
+    /// Alternative syntax unexpanded:
+    ///
+    /// ```md
+    /// ??? info "My summary"
+    ///
+    ///     Details that can be expanded
+    /// ```
+    ///
+    /// Alternative syntax expanded:
+    ///
+    /// ```md
+    /// ???+ info "My summary"
+    ///
+    ///     Details that can be collapsed
+    /// ```
+    Details(Cow<'a, str>, bool),
     /// `[Some comment text]: #`
     Comment(Cow<'a, str>),
     /// Open and close with one to two backticks
