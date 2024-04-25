@@ -19,17 +19,17 @@ pub struct Decoder<'a> {
 }
 
 impl<'a> Decoder<'a> {
-    /// Create markdown decoder from I/O reader
+    /// Create markdown decoder from I/O reader.
     pub fn from_reader(md: impl Read + 'a) -> Self {
         Self::from(LineReader::from_reader(md))
     }
 
-    /// Create markdown decoder from string slice
+    /// Create markdown decoder from string slice.
     pub fn from_str(md: &'a str) -> Self {
         Self::from_slice(md.as_bytes())
     }
 
-    /// Create markdown decoder from byte slice
+    /// Create markdown decoder from byte slice.
     pub fn from_slice(md: &'a [u8]) -> Self {
         Self::from(LineReader::from_slice(md))
     }

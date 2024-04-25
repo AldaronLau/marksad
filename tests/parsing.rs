@@ -1,6 +1,9 @@
-use std::fs::{self, File};
+use std::{
+    fs::{self, File},
+    str,
+};
 
-use marksad::{decode::Result, Decoder, Md};
+use marksad::{decode::Result, Decoder, Encoder, Md};
 
 fn test_reader_string(path: &str, f: impl Fn(&[Md<'_>])) {
     let file = File::open(path).unwrap();
@@ -89,4 +92,55 @@ fn multiline_paragraphs() {
 
         assert_eq!(mds, expected);
     });
+}
+
+#[test]
+fn roundtrip() {
+    let paragraphs = fs::read_to_string("tests/data/PARAGRAPHS.md").unwrap();
+    let headings = fs::read_to_string("tests/data/ALL_HEADINGS.md").unwrap();
+    let multiline = fs::read_to_string("tests/data/MULTILINE.md").unwrap();
+
+    for path in [
+        "tests/data/MULTILINE_PARAGRAPHS.md",
+        "tests/data/MULTILINE.md",
+    ] {
+        test_reader_string(path, |mds| {
+            let mut bytes = Vec::new();
+
+            Encoder::new(mds.iter().cloned(), &mut bytes)
+                .encode_md()
+                .unwrap();
+            assert_eq!(str::from_utf8(&bytes).unwrap(), multiline);
+        });
+    }
+
+    for path in [
+        "tests/data/PARAGRAPHS.md",
+        "tests/data/PARAGRAPHS_LEADING_NEWLINE.md",
+        "tests/data/PARAGRAPHS_LEADING_NEWLINES.md",
+    ] {
+        test_reader_string(path, |mds| {
+            let mut bytes = Vec::new();
+
+            Encoder::new(mds.iter().cloned(), &mut bytes)
+                .encode_md()
+                .unwrap();
+            assert_eq!(str::from_utf8(&bytes).unwrap(), paragraphs);
+        });
+    }
+
+    for path in [
+        "tests/data/HEADINGS.md",
+        "tests/data/HEADINGS_LEADING_NEWLINE.md",
+        "tests/data/HEADINGS_LEADING_NEWLINES.md",
+    ] {
+        test_reader_string(path, |mds| {
+            let mut bytes = Vec::new();
+
+            Encoder::new(mds.iter().cloned(), &mut bytes)
+                .encode_md()
+                .unwrap();
+            assert_eq!(str::from_utf8(&bytes).unwrap(), headings);
+        });
+    }
 }

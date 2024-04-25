@@ -80,6 +80,7 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
                 close(&mut self.open_h4, "</h4>", &mut self.writer)?;
                 close(&mut self.open_h5, "</h5>", &mut self.writer)?;
                 close(&mut self.open_h6, "</h6>", &mut self.writer)?;
+                // FIXME: Escape HTML
                 Ok(self.writer.write_all(text.as_bytes())?)
             };
 
