@@ -10,12 +10,16 @@ const HEADING5: &str = "#####";
 const HEADING6: &str = "######";
 // This one is invalid, should warn and output a paragraph
 const HEADING7: &str = "#######";
+const UNORDERED_LIST: &[&str] = &["- ", "+ ", "* "];
+const HORIZONTAL_RULE: &[&str] = &["-", "*", "_"];
 
 /// Markdown decoder
 pub struct Decoder<'a> {
     line_reader: LineReader<'a>,
     paragraph_starting: bool,
+    last_list: bool,
     queued_stack: Vec<Md<'a>>,
+    line: Option<Cow<'a, str>>,
 }
 
 impl<'a> Decoder<'a> {
@@ -44,7 +48,18 @@ impl<'a> Iterator for Decoder<'a> {
         };
 
         let mut line = loop {
-            let line = self.line_reader.next()?;
+            if let Some(line) = self.line.take() {
+                break line;
+            }
+
+            let Some(line) = self.line_reader.next() else {
+                if self.last_list {
+                    self.last_list = false;
+                    return Some(Ok(Md::ListClose));
+                } else {
+                    return None;
+                }
+            };
             let line = match line {
                 Ok(text) => text,
                 Err(e) => return Some(Err(e)),
@@ -57,6 +72,74 @@ impl<'a> Iterator for Decoder<'a> {
 
             break line;
         };
+
+        let last_list = self.last_list;
+
+        self.last_list = false;
+
+        // unordered list
+        {
+            for ul_prefix in UNORDERED_LIST {
+                line = match line {
+                    Cow::Borrowed(line) => {
+                        let trimmed = line.trim_start_matches(' ');
+                        if let Some(line) = trimmed.strip_prefix(ul_prefix) {
+                            self.last_list = true;
+                            return if last_list {
+                                self.queued_stack
+                                    .push(Md::Text(line.trim_start().into()));
+                                Some(Ok(Md::ListItem))
+                            } else {
+                                self.queued_stack
+                                    .push(Md::Text(line.trim_start().into()));
+                                self.queued_stack.push(Md::ListItem);
+                                Some(Ok(Md::UnorderedList))
+                            };
+                        }
+
+                        Cow::Borrowed(line)
+                    }
+                    Cow::Owned(mut line) => {
+                        let trimmed = line.trim_start_matches(' ');
+                        if trimmed.strip_prefix(ul_prefix).is_some() {
+                            let s = line.len() - trimmed.len();
+                            let prefix = s + ul_prefix.len();
+                            let slice = &line[prefix..];
+                            let ws = slice.len() - slice.trim_start().len();
+
+                            line.drain(0..(prefix + ws));
+                            self.last_list = true;
+                            return if last_list {
+                                self.queued_stack.push(Md::Text(line.into()));
+                                Some(Ok(Md::ListItem))
+                            } else {
+                                self.queued_stack.push(Md::Text(line.into()));
+                                self.queued_stack.push(Md::ListItem);
+                                Some(Ok(Md::UnorderedList))
+                            };
+                        }
+
+                        Cow::Owned(line)
+                    }
+                };
+            }
+
+            if last_list {
+                self.line = Some(line);
+                return Some(Ok(Md::ListClose));
+            }
+        }
+
+        // horizontal rule
+        {
+            for hz_prefix in HORIZONTAL_RULE {
+                if line.len() >= 3
+                    && line.trim_start_matches(hz_prefix).is_empty()
+                {
+                    return Some(Ok(Md::HorizontalRule));
+                }
+            }
+        }
 
         'headings: {
             if line.starts_with(HEADING7) {
@@ -102,7 +185,6 @@ impl<'a> Iterator for Decoder<'a> {
 
         if self.paragraph_starting {
             self.queued_stack.push(Md::Text(line));
-
             self.paragraph_starting = false;
             Some(Ok(Md::Paragraph))
         } else {
@@ -116,7 +198,9 @@ impl<'a> From<LineReader<'a>> for Decoder<'a> {
         Self {
             line_reader,
             paragraph_starting: true,
+            last_list: false,
             queued_stack: Vec::new(),
+            line: None,
         }
     }
 }

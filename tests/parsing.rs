@@ -144,3 +144,34 @@ fn roundtrip() {
         });
     }
 }
+
+#[test]
+fn unordered_lists() {
+    for path in ["tests/data/UNORDERED_LISTS.md"] {
+        test_reader_string(path, |mds| {
+            let expected = [
+                Md::Heading1,
+                Md::Text("Unordered Lists".into()),
+                Md::UnorderedList,
+                Md::ListItem,
+                Md::Text("List 1".into()),
+                Md::ListItem,
+                Md::Text("List 1".into()),
+                Md::ListClose,
+                Md::Paragraph,
+                Md::Text("A paragraph".into()),
+                Md::UnorderedList,
+                Md::ListItem,
+                Md::Text("List 2".into()),
+                Md::ListClose,
+                Md::HorizontalRule,
+                Md::UnorderedList,
+                Md::ListItem,
+                Md::Text("List 3".into()),
+                Md::ListClose,
+            ];
+
+            assert_eq!(mds, expected);
+        });
+    }
+}

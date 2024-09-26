@@ -22,6 +22,17 @@ impl From<io::Error> for Error {
     }
 }
 
+#[repr(u8)]
+#[derive(Copy, Clone, Default)]
+enum ListKind {
+    #[default]
+    Ordered,
+    Unordered,
+    Definition,
+    #[allow(dead_code)]
+    Task,
+}
+
 /// A markdown to HTML encoder
 pub struct HtmlEncoder<'a, W: Write> {
     iter: Box<dyn Iterator<Item = Md<'a>> + 'a>,
@@ -33,7 +44,10 @@ pub struct HtmlEncoder<'a, W: Write> {
     open_h4: bool,
     open_h5: bool,
     open_h6: bool,
+    open_li: bool,
     last_text: bool,
+    list_kinds: [ListKind; 6],
+    list_level: u8,
 }
 
 impl<'a, W: Write> HtmlEncoder<'a, W> {
@@ -49,6 +63,9 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
             open_h4: false,
             open_h5: false,
             open_h6: false,
+            open_li: false,
+            list_kinds: [ListKind::default(); 6],
+            list_level: 0,
             last_text: false,
         }
     }
@@ -80,6 +97,20 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
                 close(&mut self.open_h4, "</h4>", &mut self.writer)?;
                 close(&mut self.open_h5, "</h5>", &mut self.writer)?;
                 close(&mut self.open_h6, "</h6>", &mut self.writer)?;
+                // FIXME - could panic
+                if self.open_li {
+                    close(
+                        &mut self.open_li,
+                        match self.list_kinds[usize::from(self.list_level - 1)]
+                        {
+                            ListKind::Ordered => "</li>",
+                            ListKind::Unordered => "</li>",
+                            ListKind::Definition => "</dd>",
+                            ListKind::Task => unimplemented!(),
+                        },
+                        &mut self.writer,
+                    )?;
+                }
                 // FIXME: Escape HTML
                 Ok(self.writer.write_all(text.as_bytes())?)
             };
@@ -113,6 +144,49 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
                     open("<h6>")?;
                     self.open_h6 = true;
                 }
+                Md::OrderedList => {
+                    open("<ol>")?;
+                    self.list_kinds[usize::from(self.list_level)] =
+                        ListKind::Ordered;
+                    self.list_level += 1;
+                    // FIXME: Panic
+                    assert!(self.list_level < 6);
+                }
+                Md::UnorderedList => {
+                    open("<ul>")?;
+                    self.list_kinds[usize::from(self.list_level)] =
+                        ListKind::Unordered;
+                    self.list_level += 1;
+                    // FIXME: Panic
+                    assert!(self.list_level < 6);
+                }
+                Md::DefinitionList => {
+                    open("<dl>")?;
+                    self.list_kinds[usize::from(self.list_level)] =
+                        ListKind::Definition;
+                    self.list_level += 1;
+                    // FIXME: Panic
+                    assert!(self.list_level < 6);
+                }
+                Md::ListItem => {
+                    open("<li>")?;
+                    self.open_li = true;
+                }
+                Md::ListClose => {
+                    // FIXME - could panic
+                    self.list_level -= 1;
+
+                    close(
+                        &mut self.open_li,
+                        match self.list_kinds[usize::from(self.list_level)] {
+                            ListKind::Ordered => "</li></ol>",
+                            ListKind::Unordered => "</li></ul>",
+                            ListKind::Definition => "</dd></dl>",
+                            ListKind::Task => unimplemented!(),
+                        },
+                        &mut self.writer,
+                    )?;
+                }
                 Md::Text(text) => {
                     if last_text {
                         self.writer.write_all(b" ")?;
@@ -120,6 +194,9 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
 
                     self.writer.write_all(text.as_bytes())?;
                     self.last_text = true;
+                }
+                Md::HorizontalRule => {
+                    self.writer.write_all(b"<hr>")?;
                 }
                 _ => unimplemented!(),
             }
@@ -132,6 +209,20 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
         close(&mut self.open_h4, "</h4>", &mut self.writer)?;
         close(&mut self.open_h5, "</h5>", &mut self.writer)?;
         close(&mut self.open_h6, "</h6>", &mut self.writer)?;
+
+        if self.open_li {
+            close(
+                &mut self.open_li,
+                match self.list_kinds[usize::from(self.list_level - 1)] {
+                    ListKind::Ordered => "</li>",
+                    ListKind::Unordered => "</li>",
+                    ListKind::Definition => "</dd>",
+                    ListKind::Task => unimplemented!(),
+                },
+                &mut self.writer,
+            )?;
+        }
+
         Ok(())
     }
 }

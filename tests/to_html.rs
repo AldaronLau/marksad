@@ -43,3 +43,37 @@ fn markdown_to_html() {
 
     assert_eq!(string, expected);
 }
+
+#[test]
+fn md_html_lists() {
+    let md = [
+        Md::Heading1,
+        Md::Text("Unordered Lists".into()),
+        Md::UnorderedList,
+        Md::ListItem,
+        Md::Text("List 1".into()),
+        Md::ListItem,
+        Md::Text("List 1".into()),
+        Md::ListClose,
+        Md::Paragraph,
+        Md::Text("A paragraph".into()),
+        Md::UnorderedList,
+        Md::ListItem,
+        Md::Text("List 2".into()),
+        Md::ListClose,
+        Md::HorizontalRule,
+        Md::UnorderedList,
+        Md::ListItem,
+        Md::Text("List 3".into()),
+        Md::ListClose,
+    ];
+    let mut string = Vec::new();
+
+    HtmlEncoder::new(md, &mut string).encode_html().unwrap();
+    string.push(b'\n');
+
+    let string = String::from_utf8(string).unwrap();
+    let expected = fs::read_to_string("tests/data/list.html").unwrap();
+
+    assert_eq!(string, expected);
+}
