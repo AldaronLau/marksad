@@ -10,7 +10,7 @@ The MSRV is Rust 1.77, will adopt the [Ardaku MSRV policy] after Rust 1.81.
 The MSRV will not be updated until then.
 
 ## License
-Copyright © 2024 The MarkSad Contributors.
+Copyright © 2024-2025 The MarkSad Contributors.
 
 Licensed under any of
  - Apache License, Version 2.0, ([LICENSE\_APACHE] or
