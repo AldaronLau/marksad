@@ -183,6 +183,84 @@ impl<'a> Iterator for Decoder<'a> {
             }
         }
 
+        if line.contains('[') {
+            'links: {
+                match line {
+                    Cow::Owned(ref line) => {
+                        let Some((text, rest)) = line.split_once('[') else {
+                            break 'links;
+                        };
+                        let Some((link_ref, rest)) = rest.split_once(']')
+                        else {
+                            break 'links;
+                        };
+                        let Some((empty, rest)) = rest.split_once('(') else {
+                            break 'links;
+                        };
+                        let Some((link_val, rest)) = rest.split_once(')')
+                        else {
+                            break 'links;
+                        };
+
+                        if !empty.is_empty() {
+                            break 'links;
+                        }
+
+                        let text = text.to_owned();
+                        let link_ref = link_ref.to_owned();
+                        let link_val = link_val.to_owned();
+                        let rest = rest.to_owned();
+
+                        self.queued_stack.push(Md::Text(text.into()));
+                        self.queued_stack.push(Md::LinkRef(link_ref.into()));
+                        self.queued_stack.push(Md::LinkVal(link_val.into()));
+
+                        // FIXME: Same as below
+                        return if self.paragraph_starting {
+                            self.queued_stack.push(Md::Text(rest.into()));
+                            self.paragraph_starting = false;
+                            Some(Ok(Md::Paragraph))
+                        } else {
+                            Some(Ok(Md::Text(rest.into())))
+                        };
+                    },
+                    Cow::Borrowed(line) => {
+                        let Some((text, rest)) = line.split_once('[') else {
+                            break 'links;
+                        };
+                        let Some((link_ref, rest)) = rest.split_once(']')
+                        else {
+                            break 'links;
+                        };
+                        let Some((empty, rest)) = rest.split_once('(') else {
+                            break 'links;
+                        };
+                        let Some((link_val, rest)) = rest.split_once(')')
+                        else {
+                            break 'links;
+                        };
+
+                        if !empty.is_empty() {
+                            break 'links;
+                        }
+
+                        self.queued_stack.push(Md::Text(rest.into()));
+                        self.queued_stack.push(Md::LinkVal(link_val.into()));
+                        self.queued_stack.push(Md::LinkRef(link_ref.into()));
+
+                        // FIXME: Same as below
+                        return if self.paragraph_starting {
+                            self.queued_stack.push(Md::Text(text.into()));
+                            self.paragraph_starting = false;
+                            Some(Ok(Md::Paragraph))
+                        } else {
+                            Some(Ok(Md::Text(text.into())))
+                        };
+                    }
+                }
+            }
+        }
+
         if self.paragraph_starting {
             self.queued_stack.push(Md::Text(line));
             self.paragraph_starting = false;

@@ -1,6 +1,7 @@
 //! HTML encoding of markdown
 
 use std::{
+    borrow::Cow,
     io::{self, Write},
     result,
 };
@@ -48,6 +49,7 @@ pub struct HtmlEncoder<'a, W: Write> {
     last_text: bool,
     list_kinds: [ListKind; 6],
     list_level: u8,
+    link_ref: Option<Cow<'a, str>>,
 }
 
 impl<'a, W: Write> HtmlEncoder<'a, W> {
@@ -67,6 +69,7 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
             list_kinds: [ListKind::default(); 6],
             list_level: 0,
             last_text: false,
+            link_ref: None,
         }
     }
 
@@ -197,6 +200,24 @@ impl<'a, W: Write> HtmlEncoder<'a, W> {
                 }
                 Md::HorizontalRule => {
                     self.writer.write_all(b"<hr>")?;
+                }
+                Md::LinkRef(text) => {
+                    if self.link_ref.is_none() {
+                        self.link_ref = Some(text);
+                    } else {
+                        unimplemented!()
+                    }
+                }
+                Md::LinkVal(text) => {
+                    if let Some(link_ref) = self.link_ref.take() {
+                        self.writer.write_all(b"<a href='")?;
+                        self.writer.write_all(text.as_bytes())?;
+                        self.writer.write_all(b"'>")?;
+                        self.writer.write_all(link_ref.as_bytes())?;
+                        self.writer.write_all(b"</a>")?;
+                    } else {
+                        unimplemented!()
+                    }
                 }
                 _ => unimplemented!(),
             }
